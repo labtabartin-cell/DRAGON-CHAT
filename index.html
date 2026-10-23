@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PIXSMS — پیام‌رسان P2P</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/vazirmatn@33.0.3/Vazirmatn-font-face.css">
+<style>
+:root{--bg:#eceefc;--panel:rgba(255,255,255,.74);--text:#16132e;--muted:#6e6c8c;--border:rgba(99,88,220,.16);--accent:#6c5ce7;--grad:linear-gradient(135deg,#7c5cff,#14b8e6);--glow:0 8px 28px rgba(108,92,231,.32);--font:'Vazirmatn',Tahoma,system-ui,sans-serif;--my-bubble:linear-gradient(135deg,#6d4dff,#2a8cf0);--their-bubble:rgba(255,255,255,.92);--read:#9ff3ff;--danger:#ef4444}
+[data-theme="dark"]{--bg:#08070f;--panel:rgba(22,19,42,.72);--text:#eeedff;--muted:#9a97bd;--border:rgba(160,150,255,.14);--their-bubble:rgba(255,255,255,.07);--accent:#8b7bff}
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;font-family:var(--font);background:var(--bg);color:var(--text);font-size:15px}
+body::before{content:'';position:fixed;inset:0;z-index:-1;pointer-events:none;background:radial-gradient(620px 420px at 12% 8%,rgba(124,92,255,.30),transparent 65%),radial-gradient(560px 420px at 92% 92%,rgba(20,184,230,.26),transparent 65%)}
+.hidden{display:none!important}
+#setup{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;padding:20px;z-index:10;overflow:auto}
+.card{background:var(--panel);border:1px solid var(--border);border-radius:28px;padding:32px 28px;width:100%;max-width:440px;box-shadow:0 24px 70px rgba(60,40,160,.22);-webkit-backdrop-filter:blur(20px) saturate(1.5);backdrop-filter:blur(20px) saturate(1.5)}
+.card h1{font-size:26px;font-weight:800;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;margin:0 0 4px}
+.card p.sub{margin:0 0 20px;color:var(--muted);font-size:13px;line-height:1.8}
+.field{margin-bottom:14px}
+.field label{display:block;font-size:13px;color:var(--muted);margin-bottom:6px}
+.field input{width:100%;padding:12px 16px;font-size:14px;border-radius:14px;border:1px solid var(--border);background:rgba(127,120,200,.07);color:var(--text);outline:none;font-family:inherit;direction:ltr}
+.field input[dir="rtl"]{direction:rtl}
+.field input:focus{border-color:var(--accent);box-shadow:0 0 0 4px rgba(124,92,255,.18)}
+.btn{width:100%;padding:13px 16px;font-size:15px;font-weight:700;border-radius:14px;border:none;cursor:pointer;font-family:inherit;transition:filter .15s,transform .05s}
+.btn:active{transform:scale(.98)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.btn.primary{background:var(--grad);color:#fff;box-shadow:var(--glow)}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn.ghost{background:rgba(127,120,200,.08);color:var(--text);border:1px solid var(--border)}
+#progress{margin-top:12px;padding:10px;background:rgba(127,120,200,.08);border-radius:12px;font-size:12px;color:var(--muted);display:none;line-height:1.7}
+#progress.show{display:block}
+#progress .step{padding:2px 0}
+#progress .step.ok{color:#22c55e}
+#progress .step.err{color:var(--danger)}
+#app{display:grid;grid-template-columns:320px 1fr;height:100vh;overflow:hidden}
+@media(max-width:760px){#app{grid-template-columns:1fr}.sidebar.mobile-hidden{display:none!important}.chat.mobile-hidden{display:none!important}}
+.sidebar{background:var(--panel);border-left:1px solid var(--border);display:flex;flex-direction:column;-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);min-height:0}
+.sidebar-head{padding:14px 16px;border-bottom:1px solid var(--border)}
+.me{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.avatar{width:42px;height:42px;border-radius:50%;background:var(--grad);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:16px;flex-shrink:0}
+.me-info{flex:1;min-width:0}
+.me-name{font-weight:700;font-size:14px}
+.me-user{font-size:12px;color:var(--muted);direction:ltr;text-align:right}
+.search{display:flex;gap:6px}
+.search input{flex:1;padding:10px 12px;border-radius:12px;border:1px solid var(--border);background:rgba(127,120,200,.08);color:var(--text);font-family:inherit;font-size:13px;direction:ltr;outline:none}
+.search input:focus{border-color:var(--accent)}
+.search button{padding:0 16px;border-radius:12px;background:var(--grad);color:#fff;border:none;font-weight:700;cursor:pointer;font-family:inherit}
+.contacts{flex:1;overflow-y:auto;padding:8px}
+.contact{padding:12px;border-radius:14px;cursor:pointer;display:flex;align-items:center;gap:10px;transition:background .15s;margin-bottom:2px}
+.contact:hover{background:rgba(127,120,200,.1)}
+.contact.active{background:rgba(124,92,255,.15)}
+.contact .info{flex:1;min-width:0}
+.contact .name{font-weight:600;font-size:14px}
+.contact .last{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;direction:rtl}
+.chat{display:flex;flex-direction:column;background:var(--bg);overflow:hidden;min-height:0}
+.topbar{display:flex;align-items:center;gap:12px;padding:12px 16px;background:var(--panel);border-bottom:1px solid var(--border);-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px)}
+.peer-info{flex:1;min-width:0}
+.peer-name{font-weight:700;font-size:15px}
+.peer-status{font-size:12px;color:var(--muted);display:flex;align-items:center;gap:6px}
+.dot{width:8px;height:8px;border-radius:50%;background:#9ca3af;display:inline-block}
+.dot.online{background:#22c55e;box-shadow:0 0 10px rgba(34,197,94,.7)}
+.icon-btn{background:transparent;border:none;cursor:pointer;color:var(--muted);padding:8px;border-radius:10px;font-size:18px;line-height:1}
+.icon-btn:hover{background:rgba(127,120,200,.16);color:var(--text)}
+.messages{flex:1;overflow-y:auto;padding:18px 14px;display:flex;flex-direction:column;gap:6px}
+.msg{max-width:78%;padding:9px 14px 6px;border-radius:18px;font-size:14.5px;line-height:1.65;word-wrap:break-word;word-break:break-word;animation:pop .18s}
+@keyframes pop{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+.msg.me{align-self:flex-end;background:var(--my-bubble);color:#fff;border-bottom-right-radius:6px;box-shadow:0 8px 22px rgba(80,70,230,.30)}
+.msg.them{align-self:flex-start;background:var(--their-bubble);border-bottom-left-radius:6px;border:1px solid var(--border)}
+.msg.system{align-self:center;background:transparent;border:none;color:var(--muted);font-size:12px;padding:4px 10px;max-width:90%;text-align:center}
+.msg .meta{display:flex;align-items:center;gap:4px;font-size:11px;color:var(--muted);margin-top:3px;justify-content:flex-end}
+.msg.me .meta{color:rgba(255,255,255,.78)}
+.msg.them .meta{justify-content:flex-start}
+.msg img{max-width:100%;border-radius:8px;display:block;margin:4px 0;cursor:pointer}
+.ticks{font-size:12px;letter-spacing:-2px}
+.ticks.read{color:var(--read);font-weight:700}
+.composer{display:flex;align-items:flex-end;gap:8px;padding:10px 12px;background:var(--panel);border-top:1px solid var(--border);-webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px)}
+.attach-btn{width:44px;height:44px;border-radius:50%;background:transparent;color:var(--muted);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:20px}
+.attach-btn:hover{background:rgba(127,120,200,.16);color:var(--text)}
+.composer textarea{flex:1;resize:none;border:none;outline:none;background:rgba(127,120,200,.10);border:1px solid var(--border);color:var(--text);border-radius:24px;padding:12px 18px;font-size:15px;font-family:inherit;line-height:1.4;max-height:120px;min-height:44px}
+.composer textarea:focus{border-color:var(--accent);box-shadow:0 0 0 4px rgba(124,92,255,.14)}
+.send-btn{width:44px;height:44px;border-radius:50%;background:var(--grad);color:#fff;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:var(--glow)}
+.send-btn:active{transform:scale(.9)}
+.send-btn:disabled{opacity:.4;cursor:not-allowed;box-shadow:none}
+.send-btn svg{width:20px;height:20px;fill:currentColor}
+#empty{flex:1;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:14px;text-align:center;padding:20px;line-height:1.8}
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:rgba(20,16,44,.92);color:#fff;padding:10px 18px;border-radius:14px;font-size:14px;opacity:0;transition:all .3s;z-index:300;pointer-events:none;max-width:80vw;text-align:center}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+#lightbox{position:fixed;inset:0;background:rgba(0,0,0,.9);display:none;align-items:center;justify-content:center;z-index:200;cursor:zoom-out}
+#lightbox.show{display:flex}
+#lightbox img{max-width:92%;max-height:92%;border-radius:8px}
+</style>
+</head>
+<body data-theme="light">
+
+<div id="setup">
+  <div class="card">
+    <h1>🔐 PIXSMS</h1>
+    <p class="sub">پیام‌رسان P2P با صندوق پستی رمزنگاری‌شده روی GitHub</p>
+
+    <div class="field">
+      <label>نام کاربری (یکتا، انگلیسی، بدون فاصله)</label>
+      <input id="username" placeholder="ali" maxlength="20" autocomplete="off">
+    </div>
+    <div class="field">
+      <label>نام نمایشی</label>
+      <input id="displayName" placeholder="علی" maxlength="30" dir="rtl" autocomplete="off">
+    </div>
+
+    <button id="enterBtn" class="btn primary">ورود / ثبت‌نام</button>
+    <div id="progress"></div>
+
+    <p class="sub" style="margin-top:16px;font-size:11px;text-align:center">
+      ⚠️ کلید خصوصی فقط در این مرورگر ذخیره می‌شود. اگر پاک شود، پیام‌های قدیمی قابل بازگشایی نیستند.
+    </p>
+  </div>
+</div>
+
+<div id="app" class="hidden">
+  <aside class="sidebar">
+    <div class="sidebar-head">
+      <div class="me">
+        <div class="avatar" id="myAvatar">?</div>
+        <div class="me-info">
+          <div class="me-name" id="myDisplay">—</div>
+          <div class="me-user" id="myUsername">@—</div>
+        </div>
+        <button class="icon-btn" id="themeBtn" title="تغییر تم">🌙</button>
+      </div>
+      <div class="search">
+        <input id="searchInput" placeholder="جستجوی کاربر..." autocomplete="off">
+        <button id="searchBtn">یافتن</button>
+      </div>
+    </div>
+    <div class="contacts" id="contacts"></div>
+  </aside>
+
+  <main class="chat">
+    <div class="topbar">
+      <button class="icon-btn hidden" id="backBtn">↩</button>
+      <div class="avatar" id="peerAvatar">?</div>
+      <div class="peer-info">
+        <div class="peer-name" id="peerName">—</div>
+        <div class="peer-status">
+          <span class="dot" id="statusDot"></span>
+          <span id="statusText">—</span>
+        </div>
+      </div>
+    </div>
+
+    <div id="empty">یک کاربر را از سمت راست جستجو کن<br>یا از لیست مخاطبین انتخاب کن</div>
+    <div class="messages hidden" id="messages"></div>
+
+    <div class="composer hidden" id="composer">
+      <button class="attach-btn" id="imgBtn" title="ارسال تصویر">🖼️</button>
+      <textarea id="input" rows="1" placeholder="پیامت را بنویس..."></textarea>
+      <button class="send-btn" id="sendBtn" disabled>
+        <svg viewBox="0 0 24 24"><path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z"/></svg>
+      </button>
+    </div>
+  </main>
+</div>
+
+<div id="lightbox"><img id="lightboxImg" alt=""></div>
+<div id="toast"></div>
+
+<script src="https://unpkg.com/peerjs@1.5.4/dist/peerjs.min.js"></script>
+<script>
+'use strict';
+
+/* ==================== CONFIG ==================== */
+// ⚠️ توکن جدید خود را اینجا قرار دهید (توکن قبلی باطل شده است)
+const GH_TOKEN = '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';
+const GH_OWNER = 'labtabartin-cell';
+const GH_REPO  = 'DRAGON-CHAT';
+const GH_API   = `https://api.github.com/repos/${GH_OWNER}/${GH_REPO}/contents/`;
+const PEER_PREFIX = 'pixsms-v1-';
+const POLL_MS = 15000;
+const INLINE_IMG_MAX = 300 * 1024;
+
+/* ==================== HELPERS ==================== */
+const $ = id => document.getElementById(id);
+const b64 = buf => btoa(String.fromCharCode(...new Uint8Array(buf)));
+const b64d = s => Uint8Array.from(atob(s), c => c.charCodeAt(0));
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2,8);
+const toast = (m, ms=3000) => { const t=$('toast'); t.textContent=m; t.classList.add('show'); clearTimeout(toast._t); toast._t=setTimeout(()=>t.classList.remove('show'), ms); };
+const initials = n => (n||'?').trim().charAt(0).toUpperCase();
+const fmtTime = ts => { const d=new Date(ts); return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'); };
+
+/* ==================== STATE ==================== */
+let me = { username:null, displayName:null, peerId:null, keyPair:null };
+const ghToken = GH_TOKEN;
+let peer = null;
+let contacts = new Map();
+let activeUsername = null;
+let pollTimer = null;
+
+/* ==================== THEME ==================== */
+const savedTheme = localStorage.getItem('px_theme') || 'light';
+document.body.dataset.theme = savedTheme;
+$('themeBtn').textContent = savedTheme==='dark' ? '☀️' : '🌙';
+$('themeBtn').onclick = () => {
+  const t = document.body.dataset.theme==='dark' ? 'light' : 'dark';
+  document.body.dataset.theme = t;
+  localStorage.setItem('px_theme', t);
+  $('themeBtn').textContent = t==='dark' ? '☀️' : '🌙';
+};
+
+/* ==================== CRYPTO ==================== */
+const RSA = { name:'RSA-OAEP', modulusLength:2048, publicExponent:new Uint8Array([1,0,1]), hash:'SHA-256' };
+async function genKeyPair() { return crypto.subtle.generateKey(RSA, true, ['encrypt','decrypt']); }
+async function exportPubJwk(k) { return crypto.subtle.exportKey('jwk', k); }
+async function exportPrivJwk(k) { return crypto.subtle.exportKey('jwk', k); }
+async function importPubJwk(jwk) { return crypto.subtle.importKey('jwk', jwk, RSA, true, ['encrypt']); }
+async function importPrivJwk(jwk) { return crypto.subtle.importKey('jwk', jwk, RSA, true, ['decrypt']); }
+
+async function hybridEncrypt(pubJwk, plaintext) {
+  const pub = await importPubJwk(pubJwk);
+  const aes = await crypto.subtle.generateKey({name:'AES-GCM', length:256}, true, ['encrypt','decrypt']);
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ct = await crypto.subtle.encrypt({name:'AES-GCM', iv}, aes, new TextEncoder().encode(plaintext));
+  const rawAes = await crypto.subtle.exportKey('raw', aes);
+  const encAes = await crypto.subtle.encrypt({name:'RSA-OAEP'}, pub, rawAes);
+  return { iv: b64(iv), ct: b64(ct), key: b64(encAes) };
+}
+
+async function hybridDecrypt(privKey, env) {
+  const rawAes = await crypto.subtle.decrypt({name:'RSA-OAEP'}, privKey, b64d(env.key));
+  const aes = await crypto.subtle.importKey('raw', rawAes, {name:'AES-GCM'}, false, ['decrypt']);
+  const pt = await crypto.subtle.decrypt({name:'AES-GCM', iv: b64d(env.iv)}, aes, b64d(env.ct));
+  return new TextDecoder().decode(pt);
+}
+
+/* ==================== GITHUB API ==================== */
+function ghHeaders() {
+  return {
+    'Authorization': `Bearer ${ghToken}`,
+    'Accept': 'application/vnd.github+json',
+    'X-GitHub-Api-Version': '2022-11-28',
+  };
+}
+
+async function ghGet(path) {
+  const r = await fetch(GH_API + path, { headers: ghHeaders() });
+  if (r.status === 404) return null;
+  if (!r.ok) throw new Error(`GET ${path} → ${r.status} ${(await r.text()).slice(0,120)}`);
+  return r.json();
+}
+
+async function ghPut(path, obj, sha=null) {
+  const body = {
+    message: `pixsms: ${path} @ ${new Date().toISOString()}`,
+    content: b64(new TextEncoder().encode(JSON.stringify(obj))),
+  };
+  if (sha) body.sha = sha;
+  const r = await fetch(GH_API + path, {
+    method:'PUT',
+    headers: { ...ghHeaders(), 'Content-Type':'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!r.ok) throw new Error(`PUT ${path} → ${r.status} ${(await r.text()).slice(0,120)}`);
+  return r.json();
+}
+
+async function ghDelete(path, sha) {
+  const r = await fetch(GH_API + path, {
+    method:'DELETE',
+    headers: { ...ghHeaders(), 'Content-Type':'application/json' },
+    body: JSON.stringify({ message:`pixsms: delete ${path}`, sha }),
+  });
+  return r.ok;
+}
+
+async function ghList(path) {
+  const r = await fetch(GH_API + path, { headers: ghHeaders() });
+  if (r.status === 404) return [];
+  if (!r.ok) throw new Error(`LIST ${path} → ${r.status}`);
+  const data = await r.json();
+  return Array.isArray(data) ? data : [];
+}
+
+async function ghGetContent(fileItem) {
+  if (fileItem.content) {
+    return JSON.parse(new TextDecoder().decode(b64d(fileItem.content.replace(/\s/g,''))));
+  }
+  const r = await fetch(fileItem.download_url);
+  return r.json();
+}
+
+/* ==================== PROFILE ==================== */
+async function loadProfile(username) {
+  const f = await ghGet(`users/${username}.json`);
+  if (!f) return null;
+  return JSON.parse(new TextDecoder().decode(b64d((f.content||'').replace(/\s/g,''))));
+}
+
+// این تابع حالا اول تلاش می‌کند بسازد، اگر فایل بود آپدیت می‌کند
+async function forceCreateOrUpdateProfile(profile) {
+  const path = `users/${me.username}.json`;
+  try {
+    // تلاش برای ساخت مستقیم فایل
+    return await ghPut(path, profile, null);
+  } catch (err) {
+    // اگر خطای 422 داد یعنی فایل از قبل وجود دارد
+    if (String(err).includes('422')) {
+      const existing = await ghGet(path);
+      if (existing && existing.sha) {
+        return await ghPut(path, profile, existing.sha);
+      }
+    }
+    throw err;
+  }
+}
+
+/* ==================== SETUP / LOGIN ==================== */
+function showProgress() { const p=$('progress'); p.classList.add('show'); p.innerHTML=''; }
+function logStep(text, status='pending') {
+  const p=$('progress'); const d=document.createElement('div');
+  d.className='step'+(status==='ok'?' ok':status==='err'?' err':'');
+  d.textContent = (status==='ok'?'✓ ':status==='err'?'✗ ':'⏳ ')+text;
+  p.appendChild(d);
+}
+
+$('enterBtn').onclick = async () => {
+  const username = $('username').value.trim().toLowerCase();
+  const displayName = $('displayName').value.trim() || username;
+
+  if (!/^[a-z0-9_\-]{3,20}$/.test(username)) return toast('نام کاربری: ۳ تا ۲۰ کاراکتر a-z 0-9 _ -');
+
+  localStorage.setItem('px_username', username);
+  localStorage.setItem('px_displayName', displayName);
+
+  $('enterBtn').disabled = true;
+  showProgress();
+
+  try {
+    let keyPair = null;
+    const storedPriv = localStorage.getItem(`px_priv_${username}`);
+    const storedPub  = localStorage.getItem(`px_pub_${username}`);
+
+    if (storedPriv && storedPub) {
+      logStep('بارگذاری کلید ذخیره‌شده','ok');
+      const priv = await importPrivJwk(JSON.parse(storedPriv));
+      const pub  = await importPubJwk(JSON.parse(storedPub));
+      keyPair = { privateKey:priv, publicKey:pub };
+    } else {
+      logStep('تولید جفت کلید رمزنگاری...');
+      keyPair = await genKeyPair();
+      const privJwk = await exportPrivJwk(keyPair.privateKey);
+      const pubJwk  = await exportPubJwk(keyPair.publicKey);
+      localStorage.setItem(`px_priv_${username}`, JSON.stringify(privJwk));
+      localStorage.setItem(`px_pub_${username}`,  JSON.stringify(pubJwk));
+      logStep('جفت کلید تولید شد','ok');
+    }
+
+    const pubJwk = await exportPubJwk(keyPair.publicKey);
+    me = { username, displayName, peerId: PEER_PREFIX+username, keyPair };
+
+    logStep('ساخت / بروزرسانی پروفایل روی GitHub...');
+    
+    // مستقیم می‌رود برای ساخت فایل
+    await forceCreateOrUpdateProfile({
+      username, displayName,
+      peerId: PEER_PREFIX+username,
+      publicKey: pubJwk,
+      createdAt: Date.now(),
+      updatedAt: Date.now(),
+    });
+    
+    logStep('پروفایل با موفقیت ثبت/بروزرسانی شد','ok');
+
+    logStep('اتصال به شبکه P2P...');
+    await connectPeer();
+    logStep('P2P آماده','ok');
+
+    setTimeout(() => enterApp(), 400);
+  } catch (e) {
+    console.error(e);
+    logStep(e.message || 'خطا', 'err');
+    $('enterBtn').disabled = false;
+    toast(e.message || 'خطا در ورود');
+  }
+};
+
+/* ==================== PEERJS ==================== */
+function connectPeer() {
+  return new Promise((resolve, reject) => {
+    if (typeof Peer === 'undefined') return reject(new Error('PeerJS لود نشد'));
+    if (peer && !peer.destroyed) { resolve(); return; }
+
+    const p = new Peer(me.peerId, {
+      debug: 1,
+      config: { iceServers: [
+        { urls:'stun:stun.l.google.com:19302' },
+        { urls:'stun:stun1.l.google.com:19302' },
+        { urls:['turn:openrelay.metered.ca:80','turn:openrelay.metered.ca:443','turn:openrelay.metered.ca:443?transport=tcp'], username:'openrelayproject', credential:'openrelayproject' }
+      ]}
+    });
+
+    const t = setTimeout(() => { try{p.destroy();}catch{} reject(new Error('اتصال P2P تایم‌اوت شد')); }, 15000);
+
+    p.on('open', () => { clearTimeout(t); peer = p; resolve(); });
+    p.on('error', err => {
+      clearTimeout(t);
+      if (err.type === 'unavailable-id') reject(new Error('این نام کاربری هم‌اکنون آنلاین است'));
+      else reject(new Error('خطای P2P: '+err.type));
+    });
+
+    p.on('connection', conn => { setupConn(conn, false); });
+  });
+}
+
+function setupConn(conn, dialed) {
+  conn.on('open', () => {
+    const otherPeerId = conn.peer;
+    if (!otherPeerId.startsWith(PEER_PREFIX)) { try{conn.close();}catch{} return; }
+    const uname = otherPeerId.slice(PEER_PREFIX.length);
+    if (!contacts.has(uname)) {
+      loadProfile(uname).then(prof => {
+        if (prof) addContactFromProfile(prof, conn);
+      }).catch(()=>{});
+    } else {
+      const c = contacts.get(uname);
+      c.conn = conn;
+      if (uname === activeUsername) updateHeaderStatus();
+    }
+    conn.on('data', data => handleP2PData(data, uname));
+    conn.on('close', () => {
+      const c = contacts.get(uname);
+      if (c && c.conn === conn) c.conn = null;
+      if (uname === activeUsername) updateHeaderStatus();
+    });
+  });
+  conn.on('error', ()=>{});
+}
+
+function connectToUser(username) {
+  if (!peer || peer.destroyed) return null;
+  const c = contacts.get(username);
+  if (c && c.conn && c.conn.open) return c.conn;
+  const targetId = PEER_PREFIX + username;
+  if (targetId === peer.id) return null;
+  try {
+    const conn = peer.connect(targetId, { reliable:true });
+    if (c) c.conn = conn;
+    setupConn(conn, true);
+    return conn;
+  } catch { return null; }
+}
+
+function handleP2PData(data, fromUsername) {
+  if (!data || typeof data !== 'object') return;
+  if (data.type === 'msg') {
+    addIncomingMessage(fromUsername, {
+      id: data.id, text: data.text, ts: data.ts, status:'received', via:'p2p',
+      type: data.kind === 'image' ? 'image' : 'text', data: data.data || null,
+    });
+    const c = contacts.get(fromUsername);
+    if (c && c.conn && c.conn.open) {
+      try { c.conn.send({ type:'ack', id: data.id }); } catch{}
+    }
+  } else if (data.type === 'ack') {
+    updateMyMessageStatus(fromUsername, data.id, 'delivered');
+  }
+}
+
+/* ==================== ENTER APP ==================== */
+function enterApp() {
+  $('setup').classList.add('hidden');
+  $('app').classList.remove('hidden');
+  $('myAvatar').textContent = initials(me.displayName);
+  $('myDisplay').textContent = me.displayName;
+  $('myUsername').textContent = '@'+me.username;
+
+  try {
+    const saved = JSON.parse(localStorage.getItem(`px_contacts_${me.username}`) || '{}');
+    Object.values(saved).forEach(c => {
+      if (c && c.username && c.publicKeyJwk) {
+        contacts.set(c.username, {
+          username: c.username, displayName: c.displayName || c.username,
+          publicKeyJwk: c.publicKeyJwk, peerId: PEER_PREFIX+c.username,
+          messages: c.messages || [], conn: null,
+        });
+      }
+    });
+  } catch{}
+
+  renderContacts();
+  pollMailbox();
+  clearInterval(pollTimer);
+  pollTimer = setInterval(pollMailbox, POLL_MS);
+
+  document.addEventListener('visibilitychange', () => {
+    if (!document.hidden) pollMailbox();
+  });
+}
+
+function saveContacts() {
+  const out = {};
+  contacts.forEach((c, k) => {
+    out[k] = {
+      username: c.username, displayName: c.displayName,
+      publicKeyJwk: c.publicKeyJwk,
+      messages: c.messages.slice(-300),
+    };
+  });
+  try { localStorage.setItem(`px_contacts_${me.username}`, JSON.stringify(out)); } catch{}
+}
+
+/* ==================== CONTACTS ==================== */
+function addContactFromProfile(profile, conn) {
+  const uname = profile.username;
+  if (!uname) return null;
+  if (!contacts.has(uname)) {
+    contacts.set(uname, {
+      username: uname, displayName: profile.displayName || uname,
+      publicKeyJwk: profile.publicKey, peerId: profile.peerId || PEER_PREFIX+uname,
+      messages: [], conn: conn || null,
+    });
+    saveContacts();
+  } else if (conn) {
+    contacts.get(uname).conn = conn;
+  }
+  renderContacts();
+  return contacts.get(uname);
+}
+
+function renderContacts() {
+  const el = $('contacts');
+  el.innerHTML = '';
+  if (!contacts.size) {
+    el.innerHTML = '<div style="text-align:center;color:var(--muted);font-size:13px;padding:24px 8px;line-height:1.8">هنوز مخاطبی نداری<br>از بالا سرچ کن</div>';
+    return;
+  }
+  [...contacts.values()].sort((a,b)=>{
+    const la = a.messages[a.messages.length-1]?.ts || 0;
+    const lb = b.messages[b.messages.length-1]?.ts || 0;
+    return lb - la;
+  }).forEach(c => {
+    const div = document.createElement('div');
+    div.className = 'contact' + (c.username===activeUsername?' active':'');
+    const last = c.messages[c.messages.length-1];
+    div.innerHTML = `
+      <div class="avatar">${initials(c.displayName)}</div>
+      <div class="info">
+        <div class="name">${escapeHtml(c.displayName)}</div>
+        <div class="last">${last ? escapeHtml(last.text||'[تصویر]') : '@'+c.username}</div>
+      </div>
+    `;
+    div.onclick = () => openChat(c.username);
+    el.appendChild(div);
+  });
+}
+
+function escapeHtml(s) {
+  return String(s).replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+}
+
+/* ==================== SEARCH ==================== */
+$('searchBtn').onclick = doSearch;
+$('searchInput').addEventListener('keydown', e => { if (e.key==='Enter') doSearch(); });
+
+async function doSearch() {
+  const uname = $('searchInput').value.trim().toLowerCase();
+  if (!/^[a-z0-9_\-]{3,20}$/.test(uname)) return toast('نام کاربری معتبر نیست');
+  if (uname === me.username) return toast('خودتی!');
+  $('searchBtn').disabled = true;
+  try {
+    const prof = await loadProfile(uname);
+    if (!prof) return toast('کاربری با این نام پیدا نشد');
+    addContactFromProfile(prof);
+    openChat(uname);
+    $('searchInput').value = '';
+  } catch (e) {
+    toast('خطا: '+e.message);
+  } finally {
+    $('searchBtn').disabled = false;
+  }
+}
+
+/* ==================== OPEN CHAT ==================== */
+function openChat(username) {
+  activeUsername = username;
+  const c = contacts.get(username);
+  if (!c) return;
+
+  if (window.innerWidth <= 760) {
+    document.querySelector('.sidebar').classList.add('mobile-hidden');
+    document.querySelector('.chat').classList.remove('mobile-hidden');
+  }
+
+  $('empty').classList.add('hidden');
+  $('messages').classList.remove('hidden');
+  $('composer').classList.remove('hidden');
+
+  $('peerAvatar').textContent = initials(c.displayName);
+  $('peerName').textContent = c.displayName;
+  updateHeaderStatus();
+
+  renderMessages();
+  renderContacts();
+
+  connectToUser(username);
+  setTimeout(updateHeaderStatus, 1500);
+}
+
+function updateHeaderStatus() {
+  const c = contacts.get(activeUsername);
+  if (!c) return;
+  const online = !!(c.conn && c.conn.open);
+  $('statusDot').classList.toggle('online', online);
+  $('statusText').textContent = online ? 'آنلاین — ارسال زنده' : 'آفلاین — ارسال از طریق صندوق پستی';
+}
+
+/* ==================== RENDER MESSAGES ==================== */
+function renderMessages() {
+  const c = contacts.get(activeUsername);
+  const el = $('messages');
+  el.innerHTML = '';
+  if (!c) return;
+  c.messages.forEach(m => renderMessageEl(m, c));
+  requestAnimationFrame(() => el.scrollTop = el.scrollHeight);
+}
+
+function renderMessageEl(m, c) {
+  const el = $('messages');
+  if (m.system) {
+    const d = document.createElement('div');
+    d.className = 'msg system';
+    d.textContent = m.text;
+    el.appendChild(d);
+    return;
+  }
+  const div = document.createElement('div');
+  div.className = 'msg ' + (m.from==='me' ? 'me' : 'them');
+  div.dataset.id = m.id;
+
+  if (m.type === 'image' && m.data) {
+    const img = document.createElement('img');
+    img.src = m.data; img.alt = 'تصویر';
+    img.onclick = () => { $('lightboxImg').src = m.data; $('lightbox').classList.add('show'); };
+    div.appendChild(img);
+  } else {
+    const t = document.createElement('div');
+    t.style.whiteSpace = 'pre-wrap';
+    t.textContent = m.text || '';
+    div.appendChild(t);
+  }
+
+  const meta = document.createElement('div');
+  meta.className = 'meta';
+  const ts = document.createElement('span');
+  ts.textContent = fmtTime(m.ts) + (m.via==='mailbox' ? ' 📮' : '');
+  meta.appendChild(ts);
+  if (m.from === 'me') {
+    const ticks = document.createElement('span');
+    ticks.className = 'ticks';
+    ticks.textContent = m.status==='read' ? '✓✓' : m.status==='delivered' ? '✓✓' : '✓';
+    if (m.status==='read') ticks.classList.add('read');
+    meta.appendChild(ticks);
+  }
+  div.appendChild(meta);
+  el.appendChild(div);
+}
+
+function addMyMessage(username, msg) {
+  const c = contacts.get(username);
+  if (!c) return;
+  c.messages.push(msg);
+  saveContacts();
+  if (username === activeUsername) {
+    renderMessageEl(msg, c);
+    requestAnimationFrame(() => $('messages').scrollTop = $('messages').scrollHeight);
+  }
+  renderContacts();
+}
+
+function addIncomingMessage(username, msg) {
+  const c = contacts.get(username);
+  if (!c) return;
+  if (c.messages.some(x => x.id === msg.id)) return;
+  c.messages.push(msg);
+  saveContacts();
+  if (username === activeUsername) {
+    renderMessageEl(msg, c);
+    requestAnimationFrame(() => $('messages').scrollTop = $('messages').scrollHeight);
+  } else {
+    toast(`پیام جدید از ${c.displayName}`);
+  }
+  renderContacts();
+}
+
+function updateMyMessageStatus(username, msgId, status) {
+  const c = contacts.get(username);
+  if (!c) return;
+  const m = c.messages.find(x => x.id === msgId);
+  if (!m) return;
+  m.status = status;
+  saveContacts();
+  if (username === activeUsername) {
+    const el = $('messages').querySelector(`[data-id="${msgId}"] .ticks`);
+    if (el) {
+      el.textContent = status==='read' ? '✓✓' : status==='delivered' ? '✓✓' : '✓';
+      el.classList.toggle('read', status==='read');
+    }
+  }
+}
+
+$('lightbox').onclick = () => $('lightbox').classList.remove('show');
+
+/* ==================== COMPOSER ==================== */
+const inputEl = $('input');
+const sendBtn = $('sendBtn');
+inputEl.addEventListener('input', () => {
+  inputEl.style.height = 'auto';
+  inputEl.style.height = Math.min(inputEl.scrollHeight, 120) + 'px';
+  sendBtn.disabled = !inputEl.value.trim();
+});
+inputEl.addEventListener('keydown', e => {
+  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); }
+});
+sendBtn.onclick = handleSend;
+
+async function handleSend() {
+  const text = inputEl.value.trim();
+  if (!text || !activeUsername) return;
+  const c = contacts.get(activeUsername);
+  if (!c) return;
+
+  inputEl.value = '';
+  inputEl.style.height = 'auto';
+  sendBtn.disabled = true;
+
+  const msgId = uid();
+  const ts = Date.now();
+  const payload = { id: msgId, text, ts };
+
+  if (c.conn && c.conn.open) {
+    try {
+      c.conn.send({ type:'msg', ...payload });
+      addMyMessage(activeUsername, { ...payload, from:'me', status:'sent', via:'p2p' });
+      return;
+    } catch(e) { console.warn('P2P send failed, fallback to mailbox', e); }
+  }
+
+  try {
+    await sendToMailbox(activeUsername, { ...payload, kind:'text' });
+    addMyMessage(activeUsername, { ...payload, from:'me', status:'sent', via:'mailbox' });
+  } catch(e) {
+    toast('ارسال ناموفق: '+e.message);
+  }
+}
+
+/* ==================== MAILBOX SEND ==================== */
+async function sendToMailbox(username, msg) {
+  const c = contacts.get(username);
+  if (!c || !c.publicKeyJwk) throw new Error('کلید عمومی مخاطب موجود نیست');
+  const envelope = await hybridEncrypt(c.publicKeyJwk, JSON.stringify({
+    ...msg,
+    from: me.username,
+    displayName: me.displayName,
+    sentAt: Date.now(),
+  }));
+  const path = `mailboxes/${username}/${msg.id}.json`;
+  await ghPut(path, { id: msg.id, ...envelope });
+}
+
+/* ==================== MAILBOX POLL ==================== */
+async function pollMailbox() {
+  if (!me.username || !me.keyPair) return;
+  try {
+    const files = await ghList(`mailboxes/${me.username}`);
+    for (const f of files) {
+      if (!f.name.endsWith('.json')) continue;
+      try {
+        const env = await ghGetContent(f);
+        const plain = await hybridDecrypt(me.keyPair.privateKey, env);
+        const msg = JSON.parse(plain);
+
+        if (!contacts.has(msg.from)) {
+          const prof = await loadProfile(msg.from);
+          if (prof) addContactFromProfile(prof);
+        }
+        if (!contacts.has(msg.from)) {
+          await ghDelete(`mailboxes/${me.username}/${f.name}`, f.sha);
+          continue;
+        }
+
+        const c = contacts.get(msg.from);
+        const incoming = {
+          id: msg.id, text: msg.text, ts: msg.sentAt || Date.now(),
+          from:'them', status:'received', via:'mailbox',
+          type: msg.kind === 'image' ? 'image' : 'text',
+          data: msg.data || null,
+        };
+        if (!c.messages.some(x => x.id === msg.id)) {
+          addIncomingMessage(msg.from, incoming);
+          await ghDelete(`mailboxes/${me.username}/${f.name}`, f.sha);
+        } else {
+          await ghDelete(`mailboxes/${me.username}/${f.name}`, f.sha);
+        }
+      } catch(e) {
+        console.warn('mailbox item failed', f.name, e);
+      }
+    }
+  } catch(e) {
+    if (!String(e).includes('401')) console.warn('pollMailbox error:', e);
+  }
+}
+
+/* ==================== IMAGE SEND ==================== */
+$('imgBtn').onclick = () => {
+  if (!activeUsername) return;
+  const inp = document.createElement('input');
+  inp.type = 'file'; inp.accept = 'image/*';
+  inp.onchange = async () => {
+    const f = inp.files[0];
+    if (!f) return;
+    if (f.size > INLINE_IMG_MAX) return toast('تصویر حداکثر ۳۰۰ کیلوبایت');
+    const dataUrl = await new Promise((res, rej) => {
+      const r = new FileReader();
+      r.onload = () => res(r.result);
+      r.onerror = rej;
+      r.readAsDataURL(f);
+    });
+    const c = contacts.get(activeUsername);
+    const msgId = uid();
+    const ts = Date.now();
+    if (c.conn && c.conn.open) {
+      try {
+        c.conn.send({ type:'msg', id:msgId, kind:'image', data:dataUrl, ts });
+        addMyMessage(activeUsername, { id:msgId, type:'image', data:dataUrl, ts, from:'me', status:'sent', via:'p2p' });
+        return;
+      } catch{}
+    }
+    try {
+      await sendToMailbox(activeUsername, { id:msgId, kind:'image', data:dataUrl, ts });
+      addMyMessage(activeUsername, { id:msgId, type:'image', data:dataUrl, ts, from:'me', status:'sent', via:'mailbox' });
+    } catch(e) { toast('ارسال تصویر ناموفق: '+e.message); }
+  };
+  inp.click();
+};
+
+/* ==================== MOBILE BACK ==================== */
+$('backBtn').onclick = () => {
+  document.querySelector('.sidebar').classList.remove('mobile-hidden');
+  document.querySelector('.chat').classList.add('mobile-hidden');
+};
+if (window.innerWidth <= 760) $('backBtn').classList.remove('hidden');
+
+/* ==================== RESTORE SESSION ==================== */
+(async function restore() {
+  const savedU = localStorage.getItem('px_username');
+  if (savedU) {
+    $('username').value = savedU;
+    $('displayName').value = localStorage.getItem('px_displayName') || savedU;
+  }
+})();
+</script>
+</body>
+          </html>
